@@ -26,7 +26,7 @@ def _merge_attr_idx(a, b, a_idx, b_idx, scale_a=1.0, scale_b=1.0, add_a=0.0, add
         return None, None
     elif a is not None and b is None:
         return (a*scale_a)+add_a, a_idx
-    elif a is None and b is not None:
+    elif a is None:
         return (b*scale_b)+add_b, b_idx
     else:
         return torch.cat(((a*scale_a)+add_a, (b*scale_b)+add_b), dim=0), torch.cat((a_idx, b_idx + a.shape[0]), dim=0)

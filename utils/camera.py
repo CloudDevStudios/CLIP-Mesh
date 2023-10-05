@@ -136,35 +136,35 @@ def persp_proj(fov_x=45, ar=1, near=1.0, far=50.0):
 
 def get_camera_params(elev_angle, azim_angle, distance, resolution, fov=60, look_at=[0, 0, 0], up=[0, -1, 0]):
     
-    elev = np.radians( elev_angle )
-    azim = np.radians( azim_angle ) 
-    
-    # Generate random view
-    cam_z = distance * np.cos(elev) * np.sin(azim)
-    cam_y = distance * np.sin(elev)
-    cam_x = distance * np.cos(elev) * np.cos(azim)
+        elev = np.radians( elev_angle )
+        azim = np.radians( azim_angle ) 
 
-    modl = glm.mat4()
-    view  = glm.lookAt(
-        glm.vec3(cam_x, cam_y, cam_z),
-        glm.vec3(look_at[0], look_at[1], look_at[2]),
-        glm.vec3(up[0], up[1], up[2]),
-    )
+        # Generate random view
+        cam_z = distance * np.cos(elev) * np.sin(azim)
+        cam_y = distance * np.sin(elev)
+        cam_x = distance * np.cos(elev) * np.cos(azim)
 
-    a_mv = view * modl
-    a_mv = np.array(a_mv.to_list()).T
-    proj_mtx = persp_proj(fov)
-    
-    a_mvp = np.matmul(proj_mtx, a_mv).astype(np.float32)[None, ...]
-    
-    a_lightpos = np.linalg.inv(a_mv)[None, :3, 3]
-    a_campos = a_lightpos
+        modl = glm.mat4()
+        view  = glm.lookAt(
+            glm.vec3(cam_x, cam_y, cam_z),
+            glm.vec3(look_at[0], look_at[1], look_at[2]),
+            glm.vec3(up[0], up[1], up[2]),
+        )
 
-    return {
-        'mvp' : a_mvp,
-        'lightpos' : a_lightpos,
-        'campos' : a_campos,
-        'resolution' : [resolution, resolution], 
+        a_mv = view * modl
+        a_mv = np.array(a_mv.to_list()).T
+        proj_mtx = persp_proj(fov)
+
+        a_mvp = np.matmul(proj_mtx, a_mv).astype(np.float32)[None, ...]
+
+        a_lightpos = np.linalg.inv(a_mv)[None, :3, 3]
+        a_campos = a_lightpos
+
+        return {
+            'mvp': a_mvp,
+            'lightpos': a_campos,
+            'campos': a_campos,
+            'resolution': [resolution, resolution],
         }
 
 # Returns a batch of camera parameters
@@ -212,56 +212,52 @@ class CameraBatch(torch.utils.data.Dataset):
         
     def __getitem__(self, index):
 
-        elev = np.radians( np.random.beta( self.elev_alpha, self.elev_beta ) * self.elev_max )
-        azim = np.radians( np.random.uniform( self.azim_min, self.azim_max+1.0 ) )
-        dist = np.random.uniform( self.dist_min, self.dist_max )
-        fov = np.random.uniform( self.fov_min, self.fov_max )
-        
-        proj_mtx = persp_proj(fov)
-        
-        # Generate random view
-        cam_z = dist * np.cos(elev) * np.sin(azim)
-        cam_y = dist * np.sin(elev)
-        cam_x = dist * np.cos(elev) * np.cos(azim)
-        
-        if self.aug_loc:
+            elev = np.radians( np.random.beta( self.elev_alpha, self.elev_beta ) * self.elev_max )
+            azim = np.radians( np.random.uniform( self.azim_min, self.azim_max+1.0 ) )
+            dist = np.random.uniform( self.dist_min, self.dist_max )
+            fov = np.random.uniform( self.fov_min, self.fov_max )
 
-            # Random offset
-            limit  = self.dist_min // 2
-            rand_x = np.random.uniform( -limit, limit )
-            rand_y = np.random.uniform( -limit, limit )
+            proj_mtx = persp_proj(fov)
 
-            modl = glm.translate(glm.mat4(), glm.vec3(rand_x, rand_y, 0))
+            # Generate random view
+            cam_z = dist * np.cos(elev) * np.sin(azim)
+            cam_y = dist * np.sin(elev)
+            cam_x = dist * np.cos(elev) * np.cos(azim)
 
-        else:
-        
-            modl = glm.mat4()
-            
-        view  = glm.lookAt(
-            glm.vec3(cam_x, cam_y, cam_z),
-            glm.vec3(self.look_at[0], self.look_at[1], self.look_at[2]),
-            glm.vec3(self.up[0], self.up[1], self.up[2]),
-        )
+            if self.aug_loc:
 
-        r_mv = view * modl
-        r_mv = np.array(r_mv.to_list()).T
+                # Random offset
+                limit  = self.dist_min // 2
+                rand_x = np.random.uniform( -limit, limit )
+                rand_y = np.random.uniform( -limit, limit )
 
-        mvp     = np.matmul(proj_mtx, r_mv).astype(np.float32)
-        campos  = np.linalg.inv(r_mv)[:3, 3]
+                modl = glm.translate(glm.mat4(), glm.vec3(rand_x, rand_y, 0))
 
-        if self.aug_light:
-            lightpos = cosine_sample(campos)*dist
-        else:
-            lightpos = campos*dist
+            else:
 
-        if self.aug_bkg:
-            bkgs = get_random_bg(self.res, self.res).squeeze(0)
-        else:
-            bkgs = torch.ones(self.res, self.res, 3)
+                modl = glm.mat4()
 
-        return {
-            'mvp': torch.from_numpy( mvp ).float(),
-            'lightpos': torch.from_numpy( lightpos ).float(),
-            'campos': torch.from_numpy( campos ).float(),
-            'bkgs': bkgs
-        }
+            view  = glm.lookAt(
+                glm.vec3(cam_x, cam_y, cam_z),
+                glm.vec3(self.look_at[0], self.look_at[1], self.look_at[2]),
+                glm.vec3(self.up[0], self.up[1], self.up[2]),
+            )
+
+            r_mv = view * modl
+            r_mv = np.array(r_mv.to_list()).T
+
+            mvp     = np.matmul(proj_mtx, r_mv).astype(np.float32)
+            campos  = np.linalg.inv(r_mv)[:3, 3]
+
+            lightpos = cosine_sample(campos)*dist if self.aug_light else campos*dist
+            if self.aug_bkg:
+                bkgs = get_random_bg(self.res, self.res).squeeze(0)
+            else:
+                bkgs = torch.ones(self.res, self.res, 3)
+
+            return {
+                'mvp': torch.from_numpy( mvp ).float(),
+                'lightpos': torch.from_numpy( lightpos ).float(),
+                'campos': torch.from_numpy( campos ).float(),
+                'bkgs': bkgs
+            }

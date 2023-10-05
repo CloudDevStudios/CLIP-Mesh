@@ -96,16 +96,14 @@ def main():
 
     args = vars(parser.parse_args())
 
-    # Check if config passed - if so then parse it
-    if args['config'] is not None:
-        with open(args['config'], "r") as stream:
-            try:
-                cfg = yaml.safe_load(stream)
-            except yaml.YAMLError as exc:
-                print(exc)
-    else:
+    if args['config'] is None:
         raise("No config passed!")
 
+    with open(args['config'], "r") as stream:
+        try:
+            cfg = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
     # Override YAML with CL args
     for key in args:
         cfg[key] = args[key]
@@ -114,8 +112,8 @@ def main():
     lists = ["meshes", "unit", "train_mesh_idx", "scales", "offsets", "prior_path"]
     for item in parser._actions[1:]:
         if item.type != type(cfg[ item.dest ]) and item.dest not in lists:
-            raise ValueError("%s is not of type %s" % (item.dest, item.type) )
-                    
+            raise ValueError(f"{item.dest} is not of type {item.type}")
+
     if not( len(cfg["meshes"]) == len(cfg["unit"]) == len(cfg["train_mesh_idx"]) == len(cfg["scales"]) == len(cfg["offsets"])):
         raise("Unit, train_mesh_idx, scales and offsets is not specified for each mesh OR there is an extra item in some list. Ensure all are the same length")
 

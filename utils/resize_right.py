@@ -42,9 +42,9 @@ def cubic(x):
     absx = fw.abs(x)
     absx2 = absx ** 2
     absx3 = absx ** 3
-    return ((1.5 * absx3 - 2.5 * absx2 + 1.) * to_dtype(absx <= 1.) +
-            (-0.5 * absx3 + 2.5 * absx2 - 4. * absx + 2.) *
-            to_dtype((1. < absx) & (absx <= 2.)))
+    return (1.5 * absx3 - 2.5 * absx2 + 1.0) * to_dtype(absx <= 1.0) + (
+        -0.5 * absx3 + 2.5 * absx2 - 4.0 * absx + 2.0
+    ) * to_dtype((absx > 1.0) & (absx <= 2.0))
 
 
 @support_sz(4)
@@ -64,14 +64,15 @@ def lanczos3(x):
 @support_sz(2)
 def linear(x):
     fw, to_dtype, eps = set_framework_dependencies(x)
-    return ((x + 1) * to_dtype((-1 <= x) & (x < 0)) + (1 - x) *
-            to_dtype((0 <= x) & (x <= 1)))
+    return (x + 1) * to_dtype((x >= -1) & (x < 0)) + (1 - x) * to_dtype(
+        (x >= 0) & (x <= 1)
+    )
 
 
 @support_sz(1)
 def box(x):
     fw, to_dtype, eps = set_framework_dependencies(x)
-    return to_dtype((-1 <= x) & (x < 0)) + to_dtype((0 <= x) & (x <= 1))
+    return to_dtype((x >= -1) & (x < 0)) + to_dtype((x >= 0) & (x <= 1))
 
 from typing import Tuple
 import warnings
@@ -430,31 +431,19 @@ def apply_antialiasing_if_needed(interp_method, support_sz, scale_factor,
 
 
 def fw_ceil(x, fw):
-    if fw is numpy:
-        return fw.int_(fw.ceil(x))
-    else:
-        return x.ceil().long()
+    return fw.int_(fw.ceil(x)) if fw is numpy else x.ceil().long()
 
 
 def fw_floor(x, fw):
-    if fw is numpy:
-        return fw.int_(fw.floor(x))
-    else:
-        return x.floor().long()
+    return fw.int_(fw.floor(x)) if fw is numpy else x.floor().long()
 
 
 def fw_cat(x, fw):
-    if fw is numpy:
-        return fw.concatenate(x)
-    else:
-        return fw.cat(x)
+    return fw.concatenate(x) if fw is numpy else fw.cat(x)
 
 
 def fw_swapaxes(x, ax_1, ax_2, fw):
-    if fw is numpy:
-        return fw.swapaxes(x, ax_1, ax_2)
-    else:
-        return x.transpose(ax_1, ax_2)
+    return fw.swapaxes(x, ax_1, ax_2) if fw is numpy else x.transpose(ax_1, ax_2)
 
 
 def fw_pad(x, fw, pad_sz, pad_mode, dim=0):
@@ -469,7 +458,7 @@ def fw_pad(x, fw, pad_sz, pad_mode, dim=0):
             x = x[None, None, ...]
 
         pad_vec = [0] * ((x.ndim - 2) * 2)
-        pad_vec[0:2] = pad_sz
+        pad_vec[:2] = pad_sz
         return fw.nn.functional.pad(x.transpose(dim, -1), pad=pad_vec,
                                     mode=pad_mode).transpose(dim, -1)
 

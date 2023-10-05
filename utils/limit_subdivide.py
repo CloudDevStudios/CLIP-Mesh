@@ -26,5 +26,4 @@ class LimitSubdivide():
         self.compute_limit = limitation_evaluate.apply
 
     def get_limit(self, vertices):
-        new_verts  = self.compute_limit(vertices.to('cpu').double(), self.loop_limit)
-        return new_verts
+        return self.compute_limit(vertices.to('cpu').double(), self.loop_limit)
